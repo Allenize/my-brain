@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>JAGG — Neural Interface</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,900;1,9..144,700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+/* ── RESET ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Syne',sans-serif;user-select:none}
+
+/* ── THEME VARIABLES ── */
+:root{
+  --bg-deep:#030110;
+  --bg-mid:#060218;
+  --bg-near:#0b0328;
+  --glass:rgba(8,3,28,0.72);
+  --glass2:rgba(15,6,45,0.6);
+  --glass-light:rgba(255,255,255,0.04);
+  --border:rgba(139,92,246,0.28);
+  --border-hot:rgba(139,92,246,0.6);
+  --border-cyan:rgba(56,189,248,0.35);
+  --text-primary:#f0eaff;
+  --text-sec:#a89fd4;
+  --text-dim:#52467a;
+  --text-micro:#302450;
+  --ac1:#7c3aed;
+  --ac2:#38bdf8;
+  --ac3:#a78bfa;
+  --ac4:#e879f9;
+  --ac5:#34d399;
+  --glow-p:rgba(124,58,237,0.4);
+  --glow-c:rgba(56,189,248,0.3);
+  --glow-w:rgba(167,139,250,0.2);
+  --neural:#c4b5fd;
+  --particle:rgba(167,139,250,0.6);
+  --mode-name:dark;
+}
+.lm{
+  --bg-deep:#eceaf8;
+  --bg-mid:#e4e1f5;
+  --bg-near:#f5f3ff;
+  --glass:rgba(255,255,255,0.75);
+  --glass2:rgba(240,237,255,0.65);
+  --glass-light:rgba(124,58,237,0.04);
+  --border:rgba(124,58,237,0.2);
+  --border-hot:rgba(124,58,237,0.45);
+  --border-cyan:rgba(14,165,233,0.3);
+  --text-primary:#1a0b40;
+  --text-sec:#5b3e9e;
+  --text-dim:#a090c8;
+  --text-micro:#ccc4e8;
+  --ac1:#6d28d9;
+  --ac2:#0284c7;
+  --ac3:#7c3aed;
+  --ac4:#c026d3;
+  --ac5:#059669;
+  --glow-p:rgba(109,40,217,0.15);
+  --glow-c:rgba(2,132,199,0.12);
+  --glow-w:rgba(109,40,217,0.1);
+  --neural:#7c3aed;
+  --particle:rgba(109,40,217,0.4);
+  --mode-name:light;
+}
+
+body{background:var(--bg-deep);color:var(--text-primary);transition:background 0.8s ease,color 0.5s ease;cursor:none}
+
+/* ── CURSOR ── */
+#cur{position:fixed;z-index:9999;pointer-events:none;width:10px;height:10px;background:var(--ac3);border-radius:50%;transform:translate(-50%,-50%);transition:width 0.3s,height 0.3s,opacity 0.3s;mix-blend-mode:screen}
+#cur-ring{position:fixed;z-index:9998;pointer-events:none;width:36px;height:36px;border:1.5px solid var(--ac3);border-radius:50%;transform:translate(-50%,-50%);opacity:0.45;transition:width 0.25s,height 0.25s,opacity 0.25s}
+#cur.big{width:22px;height:22px;opacity:0.5}
+#cur-ring.big{width:54px;height:54px;opacity:0.2}
+.cur-trail{position:fixed;pointer-events:none;border-radius:50%;background:var(--ac3);z-index:9990;transform:translate(-50%,-50%);animation:trailFade 0.6s ease forwards}
+@keyframes trailFade{0%{opacity:0.35;width:6px;height:6px}100%{opacity:0;width:2px;height:2px}}
+
+/* ── CANVAS ── */
+#three-canvas{position:fixed;inset:0;z-index:1;display:block}
+
+/* ── BACKGROUND ── */
+.bg-layer{position:fixed;inset:0;z-index:0;pointer-events:none}
+.bg-nebula{
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 50%,rgba(124,58,237,0.09) 0%,transparent 65%),
+    radial-gradient(ellipse 40% 40% at 80% 15%,rgba(56,189,248,0.07) 0%,transparent 55%),
+    radial-gradient(ellipse 35% 35% at 15% 85%,rgba(232,121,249,0.05) 0%,transparent 50%),
+    var(--bg-deep);
+  transition:background 0.8s ease;
+}
+.lm .bg-nebula{
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 50%,rgba(109,40,217,0.07) 0%,transparent 65%),
+    radial-gradient(ellipse 40% 40% at 80% 15%,rgba(14,165,233,0.05) 0%,transparent 55%),
+    var(--bg-deep);
+}
+.bg-grid{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(139,92,246,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.04) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,black 30%,transparent 80%);
+}
+.scanlines{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.018;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(139,92,246,1) 2px,rgba(139,92,246,1) 3px)}
+.lm .scanlines{opacity:0.006}
+
+/* ── HEADER ── */
+#hdr{position:fixed;top:0;left:0;right:0;z-index:400;display:flex;align-items:center;justify-content:space-between;padding:1.2rem 2rem;pointer-events:none}
+.hdr-logo{font-family:'Fraunces',serif;font-weight:900;font-size:1.4rem;background:linear-gradient(135deg,var(--ac3) 0%,var(--ac2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:0.03em;pointer-events:auto;cursor:pointer;transition:filter 0.3s}
+.hdr-logo:hover{filter:drop-shadow(0 0 12px var(--glow-p))}
+.hdr-right{display:flex;align-items:center;gap:10px;pointer-events:auto}
+.hdr-tag{font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim);letter-spacing:0.14em;text-transform:uppercase;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:var(--glass);backdrop-filter:blur(12px)}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--glass);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s;color:var(--text-sec);font-size:0.8rem}
+.icon-btn:hover{border-color:var(--border-hot);color:var(--ac3);box-shadow:0 0 16px var(--glow-p)}
+
+/* ── ORBIT LAYER ── */
+#orbit-layer{position:fixed;inset:0;z-index:20;pointer-events:none}
+.orb-node{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;transition:filter 0.3s}
+.orb-pill{
+  display:flex;align-items:center;gap:7px;padding:7px 15px;
+  border-radius:999px;border:1px solid var(--border);background:var(--glass);
+  backdrop-filter:blur(20px);font-size:0.7rem;font-weight:700;
+  font-family:'JetBrains Mono',monospace;color:var(--text-sec);
+  transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  white-space:nowrap;letter-spacing:0.06em;
+  box-shadow:0 4px 24px rgba(0,0,0,0.35);
+}
+.orb-pill:hover,.orb-pill.hot{
+  border-color:var(--border-hot);color:var(--ac3);
+  box-shadow:0 0 28px var(--glow-p),0 8px 24px rgba(0,0,0,0.4);
+  transform:scale(1.15) translateY(-2px);
+}
+.orb-pill.sel{border-color:var(--ac2);color:var(--ac2);box-shadow:0 0 28px var(--glow-c)}
+.orb-pill .oi{font-size:0.9rem;transition:transform 0.35s}
+.orb-pill:hover .oi{transform:scale(1.25) rotate(-8deg)}
+/* Outer orbit pills — slightly bigger */
+.orb-outer .orb-pill{font-size:0.65rem;padding:6px 12px;opacity:0.7}
+.orb-outer .orb-pill:hover{opacity:1}
+
+/* Orbit line rings */
+.orb-ring{position:absolute;border-radius:50%;border:1px solid rgba(139,92,246,0.07);pointer-events:none;transform:translate(-50%,-50%)}
+
+/* ── BOTTOM CENTER ── */
+#bottom-ui{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;flex-direction:column;align-items:center;padding-bottom:2rem;pointer-events:none;gap:8px}
+.type-line{font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--text-dim);letter-spacing:0.1em;display:flex;align-items:center;gap:6px}
+.tcur{color:var(--ac3);animation:blink 1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.hint-line{font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--text-micro);letter-spacing:0.18em;text-transform:uppercase;animation:hintFloat 3.5s ease-in-out infinite}
+@keyframes hintFloat{0%,100%{opacity:0.35;transform:translateY(0)}50%{opacity:0.8;transform:translateY(-3px)}}
+
+/* ── STATUS BADGE ── */
+#status-badge{position:fixed;top:4.5rem;left:2rem;z-index:400;display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;border:1px solid rgba(52,211,153,0.3);background:rgba(52,211,153,0.07);backdrop-filter:blur(12px);font-size:0.62rem;font-family:'JetBrains Mono',monospace;color:#34d399;letter-spacing:0.08em;pointer-events:none}
+.status-dot{width:6px;height:6px;border-radius:50%;background:#34d399;animation:statusPulse 2s ease-in-out infinite}
+@keyframes statusPulse{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,0.6)}50%{box-shadow:0 0 0 6px rgba(52,211,153,0)}}
+
+/* ── PANEL SYSTEM ── */
+#panel-wrap{position:fixed;inset:0;z-index:200;pointer-events:none}
+.panel{
+  position:absolute;pointer-events:auto;
+  min-width:360px;max-width:440px;
+  border-radius:20px;overflow:hidden;
+  border:1px solid var(--border);
+  background:var(--glass);
+  backdrop-filter:blur(40px) saturate(1.8);
+  box-shadow:0 0 0 1px var(--border),0 40px 90px rgba(0,0,0,0.7),0 0 60px rgba(124,58,237,0.08);
+  transition:box-shadow 0.3s;
+  /* GPU hint */
+  will-change:transform,opacity;
+}
+.panel:hover{box-shadow:0 0 0 1px var(--border-hot),0 40px 90px rgba(0,0,0,0.8),0 0 80px rgba(124,58,237,0.15)}
+.panel-drag{cursor:grab;user-select:none}
+.panel-drag:active{cursor:grabbing}
+
+/* Panel header */
+.p-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1rem 1.2rem;
+  border-bottom:1px solid rgba(139,92,246,0.1);
+  background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(56,189,248,0.04));
+}
+.p-title-wrap{display:flex;align-items:center;gap:10px}
+.p-icon{width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:rgba(124,58,237,0.12);display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(--ac3)}
+.p-title{font-family:'Fraunces',serif;font-weight:900;font-size:1rem;background:linear-gradient(135deg,var(--ac3),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.p-ctrl{display:flex;align-items:center;gap:6px}
+.p-close,.p-min{width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-dim);transition:all 0.2s;font-size:0.7rem}
+.p-close:hover{border-color:rgba(239,68,68,0.5);color:#ef4444;background:rgba(239,68,68,0.08)}
+.p-min:hover{border-color:var(--border-hot);color:var(--ac3)}
+
+/* Panel tabs */
+.p-tabs{display:flex;gap:5px;padding:0.7rem 1.2rem;border-bottom:1px solid rgba(139,92,246,0.08);flex-wrap:wrap}
+.ptab{padding:5px 12px;border-radius:999px;border:1px solid transparent;font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim);cursor:pointer;transition:all 0.25s;font-weight:700;letter-spacing:0.06em;background:transparent}
+.ptab:hover{color:var(--text-sec);border-color:var(--border)}
+.ptab.on{background:var(--ac1);border-color:var(--ac1);color:#fff;box-shadow:0 4px 14px var(--glow-p)}
+
+/* Panel body */
+.p-body{padding:1.1rem 1.2rem;max-height:360px;overflow-y:auto}
+.p-body::-webkit-scrollbar{width:3px}
+.p-body::-webkit-scrollbar-thumb{background:var(--ac1);border-radius:2px}
+
+/* ── PANEL CONTENT COMPONENTS ── */
+.info-row{display:flex;gap:10px;align-items:flex-start;padding:0.55rem 0;border-bottom:1px solid rgba(139,92,246,0.07)}
+.info-row:last-child{border:none}
+.iico{width:28px;height:28px;border-radius:8px;background:rgba(124,58,237,0.1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.72rem;color:var(--ac3)}
+.ilabel{font-size:0.58rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px}
+.ival{font-size:0.8rem;color:var(--text-primary);font-weight:600;line-height:1.35}
+
+/* Skill bars */
+.sk-item{padding:0.55rem 0;border-bottom:1px solid rgba(139,92,246,0.07)}
+.sk-item:last-child{border:none}
+.sk-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.sk-name{display:flex;align-items:center;gap:7px;font-size:0.78rem;font-weight:700;color:var(--text-primary)}
+.sk-pct{font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim)}
+.sk-track{height:4px;border-radius:999px;background:rgba(139,92,246,0.1);overflow:hidden}
+.sk-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--ac1),var(--ac2));transition:width 1.2s cubic-bezier(0.22,1,0.36,1)}
+
+/* Project cards */
+.pc{border-radius:11px;padding:0.8rem;border:1px solid rgba(139,92,246,0.1);background:rgba(139,92,246,0.04);margin-bottom:7px;transition:all 0.25s;cursor:default}
+.pc:hover{border-color:var(--border);transform:translateX(3px);background:rgba(139,92,246,0.07)}
+.pc-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.pc-title{font-size:0.78rem;font-weight:700;color:var(--text-primary)}
+.pc-badge{font-size:0.56rem;padding:2px 7px;border-radius:999px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);color:#34d399;font-family:'JetBrains Mono',monospace}
+.pc-desc{font-size:0.7rem;color:var(--text-sec);line-height:1.55;margin-bottom:6px}
+.pc-tags{display:flex;flex-wrap:wrap;gap:4px}
+.ptag{font-size:0.58rem;padding:2px 8px;border-radius:999px;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2);color:var(--ac3);font-family:'JetBrains Mono',monospace}
+
+/* Education */
+.edu-c{border-radius:11px;padding:0.8rem;border:1px solid rgba(139,92,246,0.1);background:rgba(56,189,248,0.03);margin-bottom:7px}
+.edu-school{font-size:0.78rem;font-weight:700;color:var(--text-primary);margin-bottom:3px}
+.edu-deg{font-size:0.7rem;color:var(--text-sec);margin-bottom:5px}
+.edu-yr{font-size:0.58rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+
+/* Contact */
+.ct-link{display:flex;align-items:center;gap:10px;padding:0.65rem 0.875rem;border-radius:10px;border:1px solid rgba(139,92,246,0.1);background:rgba(139,92,246,0.04);margin-bottom:6px;text-decoration:none;transition:all 0.25s;cursor:pointer}
+.ct-link:hover{border-color:var(--border-hot);transform:translateX(4px);background:rgba(124,58,237,0.1)}
+.ct-link span{font-size:0.78rem;color:var(--text-primary);font-weight:600}
+.ct-link i{color:var(--ac3);font-size:0.85rem;width:18px;text-align:center}
+
+/* ── MOTTO OVERLAY ── */
+#motto{position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;background:rgba(3,1,16,0.9);backdrop-filter:blur(28px);opacity:0;pointer-events:none;transition:opacity 0.5s ease}
+#motto.on{opacity:1;pointer-events:auto}
+.motto-inner{text-align:center;padding:3rem;max-width:640px;position:relative}
+.motto-dec{font-size:2.5rem;opacity:0.25;margin-bottom:0.75rem;animation:decFloat 4s ease-in-out infinite}
+@keyframes decFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-8px) rotate(5deg)}}
+.motto-q{
+  font-family:'Fraunces',serif;font-style:italic;font-weight:700;
+  font-size:clamp(1.5rem,3.5vw,2.5rem);line-height:1.25;
+  background:linear-gradient(135deg,#f0eaff 0%,var(--ac3) 45%,var(--ac2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:1.2rem;
+  animation:mottoIn 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes mottoIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:none}}
+.motto-attr{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-dim);letter-spacing:0.18em;text-transform:uppercase;animation:mottoIn 0.9s ease 0.3s both}
+.motto-close{font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--text-micro);margin-top:2rem;letter-spacing:0.1em;animation:mottoIn 0.9s ease 0.7s both}
+/* Neural burst lines */
+.nb{position:absolute;top:50%;left:50%;width:2px;height:0;background:linear-gradient(to bottom,var(--ac3),transparent);transform-origin:top center;animation:nbExpand 1.2s ease forwards;border-radius:2px}
+@keyframes nbExpand{0%{height:0;opacity:0.8}100%{height:200px;opacity:0}}
+
+/* ── SECRET OVERLAY ── */
+#secret{position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(3,1,16,0.97);backdrop-filter:blur(40px);opacity:0;pointer-events:none;transition:opacity 0.4s}
+#secret.on{opacity:1;pointer-events:auto}
+.sec-inner{text-align:center;font-family:'JetBrains Mono',monospace;max-width:520px;padding:2rem}
+.sec-glitch{font-family:'Fraunces',serif;font-size:clamp(2rem,6vw,4rem);font-weight:900;background:linear-gradient(135deg,var(--ac3),var(--ac2),var(--ac4));-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:glitchPop 0.6s ease}
+@keyframes glitchPop{0%{transform:scale(0) rotate(-10deg)}60%{transform:scale(1.1) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
+.sec-line{font-size:0.8rem;color:var(--text-sec);line-height:1.7;margin:1.2rem 0}
+.sec-code{font-size:0.62rem;color:var(--text-dim);border:1px solid var(--border);padding:0.6rem 1rem;border-radius:8px;background:rgba(139,92,246,0.06);display:inline-block;margin-top:0.5rem}
+
+/* ── RIPPLE ── */
+.ripple{position:fixed;border-radius:50%;pointer-events:none;z-index:50;transform:translate(-50%,-50%) scale(0);border-style:solid;border-width:1.5px;animation:rippleOut 1s ease-out forwards}
+@keyframes rippleOut{0%{transform:translate(-50%,-50%) scale(0);opacity:0.9}100%{transform:translate(-50%,-50%) scale(1);opacity:0;width:380px;height:380px}}
+
+/* ── TOOLTIP ── */
+#tt{position:fixed;z-index:500;background:var(--glass);border:1px solid var(--border);border-radius:9px;padding:6px 12px;font-size:0.67rem;font-family:'JetBrains Mono',monospace;color:var(--text-sec);pointer-events:none;opacity:0;transition:opacity 0.2s;white-space:nowrap;backdrop-filter:blur(20px);box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:220px}
+#tt.on{opacity:1}
+
+/* ── ENERGY BURST ── */
+.eburst{position:fixed;pointer-events:none;z-index:40;border-radius:50%;border:1px solid;animation:eBurstAnim 0.8s ease-out forwards;transform:translate(-50%,-50%) scale(0)}
+@keyframes eBurstAnim{0%{transform:translate(-50%,-50%) scale(0);opacity:0.8}100%{transform:translate(-50%,-50%) scale(1);opacity:0;width:500px;height:500px}}
+
+/* ── FLOAT PARTICLES ── */
+.fp{position:fixed;border-radius:50%;pointer-events:none;z-index:2;animation:fpRise linear infinite}
+@keyframes fpRise{0%{opacity:0;transform:translateY(0) translateX(0)}15%{opacity:1}85%{opacity:0.4}100%{opacity:0;transform:translateY(-100vh) translateX(20px)}}
+
+/* ── SKILL DETAIL ── */
+.sk-detail-hero{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.sk-detail-icon{font-size:2rem}
+.sk-detail-title{font-family:'Fraunces',serif;font-weight:900;font-size:1.4rem;background:linear-gradient(135deg,var(--ac3),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sk-detail-desc{font-size:0.75rem;color:var(--text-sec);line-height:1.65;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(139,92,246,0.1)}
+
+/* ── CERT ITEMS ── */
+.cert{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(139,92,246,0.06);font-size:0.7rem;color:var(--text-sec)}
+.cert:last-child{border:none}
+.cert i{color:var(--ac3);font-size:0.72rem;flex-shrink:0}
+
+/* ── IDLE PULSE RINGS ── */
+.idle-ring{position:fixed;left:50%;top:50%;border-radius:50%;border:1px solid rgba(139,92,246,0.15);pointer-events:none;z-index:3;transform:translate(-50%,-50%) scale(0);animation:idleExpand linear forwards}
+@keyframes idleExpand{0%{transform:translate(-50%,-50%) scale(0);opacity:0.5}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
+
+/* ── DRAGGABLE PANELS ── */
+.panel{position:absolute;user-select:none}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  #hdr{padding:0.875rem 1rem}
+  .panel{min-width:92vw!important;max-width:96vw!important;left:2vw!important}
+  .orb-pill{padding:5px 9px;font-size:0.62rem}
+  #status-badge{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="cur-ring"></div>
+
+<div class="bg-layer bg-nebula"></div>
+<div class="bg-grid"></div>
+<div class="scanlines"></div>
+<div id="fp-wrap"></div>
+
+<canvas id="three-canvas"></canvas>
+
+<div id="orbit-layer"></div>
+
+<!-- Header -->
+<div id="hdr">
+  <div class="hdr-logo" id="logo-btn">JAGG</div>
+  <div class="hdr-right">
+    <div class="hdr-tag" id="hdr-role-wrap">
+      <span id="hdr-role">IT Student</span><span class="tcur">_</span>
+    </div>
+    <button class="icon-btn" id="sound-btn" title="Toggle Sound"><i class="fas fa-volume-mute" id="sound-icon"></i></button>
+    <button class="icon-btn" id="theme-btn" title="Toggle Theme"><i class="fas fa-moon" id="theme-icon"></i></button>
+  </div>
+</div>
+
+<!-- Status -->
+<div id="status-badge"><div class="status-dot"></div>Available for OJT 2025</div>
+
+<!-- Bottom UI -->
+<div id="bottom-ui">
+  <div class="type-line">
+    <span style="color:var(--text-micro)">◆</span>
+    <span id="type-out"></span>
+    <span class="tcur">|</span>
+  </div>
+  <div class="hint-line">click brain · hover skills · double-click for secret</div>
+</div>
+
+<!-- Panels -->
+<div id="panel-wrap"></div>
+
+<!-- Tooltip -->
+<div id="tt"></div>
+
+<!-- Motto -->
+<div id="motto" onclick="closeMottoFn()">
+  <div class="motto-inner" id="motto-inner">
+    <div class="motto-dec">✦</div>
+    <div class="motto-q">"Primed to Lead and Serve for Progress"</div>
+    <div class="motto-attr">— John Allen Agaton Guerra</div>
+    <div class="motto-close">[ click anywhere to continue ]</div>
+  </div>
+</div>
+
+<!-- Secret -->
+<div id="secret" onclick="closeSecretFn()">
+  <div class="sec-inner">
+    <div class="sec-glitch">JAGG</div>
+    <div class="sec-line">
+      You've penetrated the deepest layer of the neural interface.<br/>
+      <span style="color:var(--ac3)">John Allen Agaton Guerra</span> — wired for growth,<br/>
+      architecting systems that matter.
+    </div>
+    <div style="color:var(--ac2);font-size:0.78rem;font-style:italic;margin-bottom:0.5rem">"Primed to Lead and Serve for Progress"</div>
+    <div class="sec-code">
+      <span style="color:var(--text-dim)">// </span><span style="color:var(--ac3)">secret_layer</span><span style="color:var(--text-dim)">.unlock() → </span><span style="color:var(--ac2)">true</span><br/>
+      <span style="color:var(--text-dim)">// </span><span style="color:var(--ac4)">identity</span> = <span style="color:#fbbf24">"JAGG :: Neural Systems Developer"</span>
+    </div>
+    <div style="font-size:0.58rem;color:var(--text-micro);margin-top:1.5rem;font-family:'JetBrains Mono',monospace;letter-spacing:0.1em">[ click anywhere to disengage ]</div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   DATA LAYER
+════════════════════════════════════════════════════ */
+const GH = 'Allenize';
+const MOTTO = '"Primed to Lead and Serve for Progress"';
+const DATA = {
+  about:{
+    name:'John Allen Agaton Guerra',title:'IT Student & Aspiring Developer',
+    school:'PLSP – Pamantasan ng Lungsod ng San Pablo',year:'4th Year, BSIT',
+    location:'San Pablo City, Laguna, Philippines',status:'Available for OJT 2025',
+    bio:'Passionate IT professional building modern, efficient, user-focused digital solutions. Wired for continuous growth and driven by purpose.',
+    github:'Allenize',email:'johnallenguerra@gmail.com',phone:'09677924819',
+  },
+  skills:[
+    {n:'HTML / CSS',i:'fab fa-html5',c:'#e97c41',lv:90,d:'Semantic markup, Flexbox & Grid, responsive design, CSS animations.'},
+    {n:'JavaScript',i:'fab fa-js',c:'#f7df1e',lv:78,d:'ES6+, DOM, async/await, React ecosystem, REST API integration.'},
+    {n:'PHP',i:'fab fa-php',c:'#7b7fb5',lv:72,d:'Server-side logic, CRUD, session management, secure authentication.'},
+    {n:'MySQL',i:'fas fa-database',c:'#4479a1',lv:75,d:'Relational modeling, complex queries, normalization, procedures.'},
+    {n:'React',i:'fab fa-react',c:'#61dafb',lv:68,d:'Component architecture, hooks, context, Tailwind integration.'},
+    {n:'C++',i:'fas fa-code',c:'#00a8ff',lv:60,d:'OOP paradigms, data structures, algorithms, console applications.'},
+    {n:'Networking',i:'fas fa-network-wired',c:'#10b981',lv:65,d:'TCP/IP stack, VLANs, Cisco Packet Tracer, network topology.'},
+    {n:'Git / GitHub',i:'fab fa-git-alt',c:'#f05032',lv:70,d:'Version control, branching, pull requests, CI/CD workflows.'},
+  ],
+  projects:[
+    {t:'Personal Portfolio Website',d:'React 18, GitHub API, interactive terminal, AI chatbot, PWA support.',tags:['React','Tailwind','GitHub API','PWA'],s:'Live'},
+    {t:'Student Management System',d:'PHP + MySQL CRUD with role-based auth for admin, teachers, students.',tags:['PHP','MySQL','Bootstrap'],s:'Complete'},
+    {t:'Basic Inventory System',d:'Stock tracking, supplier management, Chart.js analytics dashboard.',tags:['PHP','MySQL','Chart.js'],s:'Complete'},
+    {t:'Enterprise Network Sim',d:'Multi-VLAN routing, ACLs, redundancy using Cisco Packet Tracer.',tags:['Cisco','TCP/IP','Networking'],s:'Complete'},
+  ],
+  education:[
+    {s:'PLSP – Pamantasan ng Lungsod ng San Pablo',d:'Bachelor of Science in Information Technology',y:'2021 – Present',i:'fas fa-graduation-cap'},
+    {s:'PLSP Integrated School',d:'Senior High School – STEM Track',y:'2019 – 2021',i:'fas fa-school'},
+    {s:'San Pablo City Central School',d:'Elementary Education',y:'2009 – 2015',i:'fas fa-book'},
+  ],
+  certs:[
+    'DICT – ICT Course: Web Design (2023)',
+    'Cisco NetAcad – IT Essentials (2023)',
+    'TESDA NCII – Computer Systems Servicing (2022)',
+    'Google – Digital Marketing Fundamentals (2024)',
+  ],
+  contact:[
+    {i:'fas fa-envelope',l:'johnallenguerra@gmail.com',h:'mailto:johnallenguerra@gmail.com'},
+    {i:'fas fa-phone',l:'+63 967 792 4819',h:'tel:+639677924819'},
+    {i:'fab fa-github',l:'github.com/Allenize',h:'https://github.com/Allenize'},
+    {i:'fab fa-linkedin-in',l:'linkedin.com/in/johnguerra',h:'https://linkedin.com/in/johnguerra'},
+    {i:'fas fa-map-marker-alt',l:'San Pablo City, Laguna, PH',h:null},
+  ],
+};
+
+const INNER_TECHS = [
+  {label:'HTML / CSS',icon:'fab fa-html5',col:'#e97c41',desc:'Semantic & responsive layouts',skill:'HTML / CSS'},
+  {label:'JavaScript',icon:'fab fa-js',col:'#f7df1e',desc:'ES6+ & React ecosystem',skill:'JavaScript'},
+  {label:'PHP',icon:'fab fa-php',col:'#7b7fb5',desc:'Server-side scripting',skill:'PHP'},
+  {label:'MySQL',icon:'fas fa-database',col:'#4479a1',desc:'Relational databases',skill:'MySQL'},
+];
+const OUTER_TECHS = [
+  {label:'React',icon:'fab fa-react',col:'#61dafb',desc:'Component architecture',skill:'React'},
+  {label:'C++',icon:'fas fa-code',col:'#00a8ff',desc:'OOP & algorithms',skill:'C++'},
+  {label:'Networking',icon:'fas fa-network-wired',col:'#10b981',desc:'TCP/IP & Cisco',skill:'Networking'},
+  {label:'Git',icon:'fab fa-git-alt',col:'#f05032',desc:'Version control',skill:'Git / GitHub'},
+];
+
+/* ════════════════════════════════════════════════════
+   THEME
+════════════════════════════════════════════════════ */
+let isDark = true;
+const themeBtn = document.getElementById('theme-btn');
+const themeIcon = document.getElementById('theme-icon');
+themeBtn.addEventListener('click', () => {
+  isDark = !isDark;
+  document.body.classList.toggle('lm', !isDark);
+  themeIcon.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+  applyBrainTheme();
+});
+
+/* ════════════════════════════════════════════════════
+   SOUND SYSTEM
+════════════════════════════════════════════════════ */
+let audioCtx = null, soundOn = false;
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playTone(freq = 440, dur = 0.12, vol = 0.06, type = 'sine') {
+  if (!soundOn || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.frequency.value = freq; osc.type = type;
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+function playClickSound() { playTone(660, 0.08, 0.05, 'sine'); setTimeout(() => playTone(880, 0.06, 0.03), 60); }
+function playHoverSound() { playTone(440, 0.04, 0.025, 'sine'); }
+function playMottoSound() {
+  [220, 330, 440, 550, 660].forEach((f, i) => setTimeout(() => playTone(f, 0.2, 0.04), i * 80));
+}
+const soundBtn = document.getElementById('sound-btn');
+const soundIcon = document.getElementById('sound-icon');
+soundBtn.addEventListener('click', () => {
+  initAudio();
+  soundOn = !soundOn;
+  soundIcon.className = soundOn ? 'fas fa-volume-high' : 'fas fa-volume-mute';
+  if (soundOn) playTone(528, 0.2, 0.06);
+});
+
+/* ════════════════════════════════════════════════════
+   CURSOR + TRAILS
+════════════════════════════════════════════════════ */
+const cur = document.getElementById('cur'), curRing = document.getElementById('cur-ring');
+let mx = 0, my = 0, rx = 0, ry = 0;
+const trails = [];
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cur.style.left = mx + 'px'; cur.style.top = my + 'px';
+  // Trail
+  const t = document.createElement('div');
+  t.className = 'cur-trail';
+  t.style.left = mx + 'px'; t.style.top = my + 'px';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 620);
+});
+(function animRing() {
+  rx += (mx - rx) * 0.11; ry += (my - ry) * 0.11;
+  curRing.style.left = rx + 'px'; curRing.style.top = ry + 'px';
+  requestAnimationFrame(animRing);
+})();
+function setCursorBig(v) { cur.classList.toggle('big', v); curRing.classList.toggle('big', v); }
+
+/* ════════════════════════════════════════════════════
+   FLOAT PARTICLES
+════════════════════════════════════════════════════ */
+const fpWrap = document.getElementById('fp-wrap');
+for (let i = 0; i < 28; i++) {
+  const p = document.createElement('div');
+  p.className = 'fp';
+  const sz = Math.random() * 3 + 1;
+  p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random() * 100}vw;bottom:${Math.random() * -10}px;background:var(--particle);animation-duration:${10 + Math.random() * 14}s;animation-delay:${Math.random() * 10}s`;
+  fpWrap.appendChild(p);
+}
+
+/* ════════════════════════════════════════════════════
+   THREE.JS BRAIN
+════════════════════════════════════════════════════ */
+const T = window.THREE;
+const canvas = document.getElementById('three-canvas');
+const renderer = new T.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+renderer.shadowMap.enabled = false;
+
+const scene = new T.Scene();
+const camera = new T.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 100);
+camera.position.z = 5.2;
+
+// Lights
+const ambL = new T.AmbientLight(0xffffff, 0.35); scene.add(ambL);
+const pL1 = new T.PointLight(0x7c3aed, 5.5, 14); pL1.position.set(3, 3, 3); scene.add(pL1);
+const pL2 = new T.PointLight(0x38bdf8, 3.5, 12); pL2.position.set(-3, -2, 2); scene.add(pL2);
+const pL3 = new T.PointLight(0xa78bfa, 3, 10); pL3.position.set(0, 5, 1); scene.add(pL3);
+const pL4 = new T.PointLight(0xe879f9, 2, 8); pL4.position.set(-2, 2, -2); scene.add(pL4);
+
+// Brain geometry — icosahedron with gyri distortion
+const bGeo = new T.IcosahedronGeometry(1.38, 8);
+const bPos = bGeo.attributes.position;
+const origB = bPos.array.slice();
+
+// Apply lobe/gyri deformation
+for (let i = 0; i < bPos.count; i++) {
+  const x = origB[i*3], y = origB[i*3+1], z = origB[i*3+2];
+  const len = Math.sqrt(x*x + y*y + z*z);
+  const nx = x/len, ny = y/len, nz = z/len;
+  const gyri =
+    Math.sin(nx*7 + ny*4.5) * Math.cos(nz*6 + nx*3) * 0.09 +
+    Math.sin(ny*8 + nz*5) * Math.cos(nx*6.5) * 0.07 +
+    Math.cos(nz*9 + ny*3.5) * Math.sin(nx*5.5 + nz*2.5) * 0.055 +
+    Math.sin(nx*4 + nz*3) * 0.04;
+  const hemi = y > 0.2 ? 1.0 : y < -0.2 ? 0.97 : 0.985;
+  const d = (1 + gyri) * hemi;
+  bPos.setXYZ(i, x*d, y*d, z*d);
+}
+bPos.needsUpdate = true;
+bGeo.computeVertexNormals();
+const staticBrain = bGeo.attributes.position.array.slice();
+
+const bMat = new T.MeshPhongMaterial({
+  color: 0x4a1a8c, emissive: 0x2a0960, emissiveIntensity: 0.45,
+  shininess: 130, specular: new T.Color(0xc4b5fd),
+  transparent: true, opacity: 0.93,
+});
+const brainMesh = new T.Mesh(bGeo, bMat); scene.add(brainMesh);
+
+// Wireframe
+const wfGeo = new T.IcosahedronGeometry(1.41, 4);
+const wfMat = new T.MeshBasicMaterial({ color: 0x7c3aed, wireframe: true, transparent: true, opacity: 0.055 });
+const wfMesh = new T.Mesh(wfGeo, wfMat); scene.add(wfMesh);
+
+// Inner glow core
+const igGeo = new T.SphereGeometry(0.95, 32, 32);
+const igMat = new T.MeshBasicMaterial({ color: 0x5b21b6, transparent: true, opacity: 0.14 });
+const igMesh = new T.Mesh(igGeo, igMat); scene.add(igMesh);
+
+// Second inner sphere (hot core)
+const ig2Geo = new T.SphereGeometry(0.5, 16, 16);
+const ig2Mat = new T.MeshBasicMaterial({ color: 0xa78bfa, transparent: true, opacity: 0.08 });
+const ig2Mesh = new T.Mesh(ig2Geo, ig2Mat); scene.add(ig2Mesh);
+
+// Neural connection arcs
+const neuralGrp = new T.Group(); scene.add(neuralGrp);
+const NEURAL_COUNT = 52;
+function buildNeural() {
+  while (neuralGrp.children.length) neuralGrp.remove(neuralGrp.children[0]);
+  for (let i = 0; i < NEURAL_COUNT; i++) {
+    const phi1 = Math.random() * Math.PI * 2, theta1 = Math.random() * Math.PI;
+    const phi2 = phi1 + (Math.random() - 0.5) * 2.5, theta2 = theta1 + (Math.random() - 0.5) * 2.5;
+    const R = 1.4;
+    const p1 = new T.Vector3(R*Math.sin(theta1)*Math.cos(phi1), R*Math.cos(theta1), R*Math.sin(theta1)*Math.sin(phi1));
+    const p2 = new T.Vector3(R*Math.sin(theta2)*Math.cos(phi2), R*Math.cos(theta2), R*Math.sin(theta2)*Math.sin(phi2));
+    const mid = p1.clone().add(p2).multiplyScalar(0.5).normalize().multiplyScalar(R + 0.15 + Math.random() * 0.3);
+    const pts = [];
+    for (let s = 0; s <= 22; s++) {
+      const t2 = s / 22;
+      pts.push(new T.Vector3().copy(p1).multiplyScalar((1-t2)**2).add(mid.clone().multiplyScalar(2*t2*(1-t2))).add(p2.clone().multiplyScalar(t2**2)));
+    }
+    const lGeo = new T.BufferGeometry().setFromPoints(pts);
+    const hue = 0.68 + Math.random() * 0.18;
+    const lMat = new T.LineBasicMaterial({ color: new T.Color().setHSL(hue, 0.95, 0.7), transparent: true, opacity: 0 });
+    const line = new T.Line(lGeo, lMat);
+    line.userData = { baseOp: Math.random() * 0.28 + 0.04, phase: Math.random() * Math.PI * 2, speed: 0.8 + Math.random() * 1.5 };
+    neuralGrp.add(line);
+  }
+}
+buildNeural();
+
+// Particle system around brain
+const PCOUNT = 200;
+const pGeo = new T.BufferGeometry();
+const pPos = new Float32Array(PCOUNT * 3);
+const pAng = new Float32Array(PCOUNT), pRad = new Float32Array(PCOUNT), pSpd = new Float32Array(PCOUNT), pY = new Float32Array(PCOUNT);
+for (let i = 0; i < PCOUNT; i++) {
+  const a = Math.random() * Math.PI * 2, r = 1.9 + Math.random() * 2.6, y = (Math.random() - 0.5) * 3.5;
+  pPos[i*3] = Math.cos(a)*r; pPos[i*3+1] = y; pPos[i*3+2] = Math.sin(a)*r;
+  pAng[i] = a; pRad[i] = r; pSpd[i] = 0.0015 + Math.random() * 0.003; pY[i] = y;
+}
+pGeo.setAttribute('position', new T.BufferAttribute(pPos, 3));
+const pMat = new T.PointsMaterial({ color: 0xb39ddb, size: 0.028, transparent: true, opacity: 0.75, blending: T.AdditiveBlending, depthWrite: false });
+const pSystem = new T.Points(pGeo, pMat); scene.add(pSystem);
+
+// Rings — multi-axis
+function mkRing(r, tube, col, rx, ry, rz, op) {
+  const m = new T.Mesh(new T.TorusGeometry(r, tube, 16, 256), new T.MeshBasicMaterial({ color: col, transparent: true, opacity: op }));
+  m.rotation.set(rx, ry, rz); return m;
+}
+const ring1 = mkRing(2.1, 0.008, 0x7c3aed, Math.PI/2.2, 0, 0.2, 0.3);
+const ring2 = mkRing(2.5, 0.005, 0x38bdf8, Math.PI/3, Math.PI/5, 0, 0.18);
+const ring3 = mkRing(1.8, 0.006, 0xa78bfa, Math.PI/1.8, 0, -Math.PI/6, 0.22);
+const ring4 = mkRing(2.85, 0.004, 0xe879f9, Math.PI/2.5, Math.PI/8, Math.PI/10, 0.12);
+scene.add(ring1, ring2, ring3, ring4);
+
+// Spike mesh for click burst
+const spikeGrp = new T.Group(); scene.add(spikeGrp);
+let spikeAnim = 0, spikeActive = false;
+function triggerSpikes() {
+  while (spikeGrp.children.length) spikeGrp.remove(spikeGrp.children[0]);
+  for (let i = 0; i < 24; i++) {
+    const phi = (i / 24) * Math.PI * 2;
+    const theta = Math.random() * Math.PI;
+    const dir = new T.Vector3(Math.sin(theta)*Math.cos(phi), Math.cos(theta), Math.sin(theta)*Math.sin(phi));
+    const pts = [dir.clone().multiplyScalar(1.42), dir.clone().multiplyScalar(1.42 + Math.random() * 0.8 + 0.3)];
+    const geo = new T.BufferGeometry().setFromPoints(pts);
+    const mat = new T.LineBasicMaterial({ color: new T.Color().setHSL(0.72 + Math.random()*0.12, 1, 0.75), transparent: true, opacity: 0.9 });
+    spikeGrp.add(new T.Line(geo, mat));
+  }
+  spikeActive = true; spikeAnim = 0;
+}
+
+// State
+let gTime = 0, mouseNorm = { x: 0, y: 0 }, targetRot = { x: 0, y: 0 };
+let brainHov = false, brainPulse = 0;
+let clickPTime = 0, clickActive = false;
+let clickCount = 0, lastClickT = 0;
+let idleTimer = 0, idleActive = false;
+
+function applyBrainTheme() {
+  if (isDark) {
+    bMat.color.set(0x4a1a8c); bMat.emissive.set(0x2a0960); bMat.emissiveIntensity = 0.45;
+    pL1.color.set(0x7c3aed); pL2.color.set(0x38bdf8);
+    igMat.opacity = 0.14; wfMat.opacity = 0.055;
+  } else {
+    bMat.color.set(0x9b8fd4); bMat.emissive.set(0x6d4fc8); bMat.emissiveIntensity = 0.22;
+    pL1.color.set(0x6d28d9); pL2.color.set(0x0284c7);
+    igMat.opacity = 0.08; wfMat.opacity = 0.03;
+  }
+}
+
+// Canvas events
+canvas.addEventListener('mousemove', e => {
+  mouseNorm.x = (e.clientX / innerWidth - 0.5) * 2;
+  mouseNorm.y = -(e.clientY / innerHeight - 0.5) * 2;
+  idleTimer = 0;
+});
+canvas.addEventListener('mouseenter', () => brainHov = true);
+canvas.addEventListener('mouseleave', () => { brainHov = false; mouseNorm.x = 0; mouseNorm.y = 0; });
+
+// Click detection
+canvas.addEventListener('click', e => {
+  const cx = innerWidth / 2, cy = innerHeight / 2;
+  const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+  if (dist > 220) return;
+  const now = Date.now();
+  if (now - lastClickT < 380) {
+    // Double click
+    openSecret();
+    initAudio(); playMottoSound();
+  } else {
+    // Single click
+    spawnRipples(e.clientX, e.clientY);
+    openBrainPanel();
+    triggerSpikes();
+    initAudio(); playClickSound();
+    clickActive = true; clickPTime = 0;
+    islandPanelOpen = true;
+  }
+  lastClickT = now;
+});
+
+// J key → secret
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'j' || e.key === 'J') openSecret();
+  if (e.key === 'Escape') { closeAllPanels(); closeMottoFn(); closeSecretFn(); }
+});
+
+// Animation
+function animate() {
+  requestAnimationFrame(animate);
+  gTime += 0.011;
+  idleTimer += 0.011;
+  if (clickActive) clickPTime += 0.055;
+  if (spikeActive) spikeAnim += 0.08;
+
+  // Breathing + morph
+  const breathe = Math.sin(gTime * 1.05) * 0.017;
+  const hAmp = brainHov ? 1.7 : 1;
+  const cBurst = clickActive ? Math.sin(clickPTime * 5.5) * Math.exp(-clickPTime * 1.8) * 0.4 : 0;
+  const bp = bGeo.attributes.position;
+  for (let i = 0; i < bp.count; i++) {
+    const sx = staticBrain[i*3], sy = staticBrain[i*3+1], sz = staticBrain[i*3+2];
+    const len = Math.sqrt(sx*sx + sy*sy + sz*sz);
+    const w = Math.sin(sx*3.2 + gTime*0.9) * Math.cos(sy*3 + gTime*0.7) * 0.019 * hAmp
+            + Math.sin(sz*2.8 + gTime*1.2) * 0.013 * hAmp
+            + Math.cos(sy*3.5 + sz*2 + gTime*0.8) * 0.01;
+    const d = 1 + breathe + w + cBurst / len;
+    bp.setXYZ(i, sx*d, sy*d, sz*d);
+  }
+  bp.needsUpdate = true; bGeo.computeVertexNormals();
+
+  // Rotation with mouse follow
+  targetRot.x += (-mouseNorm.y * 0.28 - targetRot.x) * 0.055;
+  targetRot.y += (mouseNorm.x * 0.32 - targetRot.y) * 0.055;
+  brainMesh.rotation.y += 0.0028 + targetRot.y * 0.018;
+  brainMesh.rotation.x += (targetRot.x * 0.018 - brainMesh.rotation.x) * 0.04;
+  wfMesh.rotation.y = brainMesh.rotation.y * 0.55;
+  wfMesh.rotation.x = brainMesh.rotation.x * 0.45;
+  igMesh.rotation.y -= 0.007;
+  ig2Mesh.rotation.y += 0.012;
+
+  // Neural pulse
+  neuralGrp.children.forEach(l => {
+    const { baseOp, phase, speed } = l.userData;
+    const t2 = (Math.sin(gTime * speed + phase) * 0.5 + 0.5);
+    l.material.opacity = baseOp * t2;
+    if (brainHov) l.material.opacity = Math.min(l.material.opacity * 3.2, 0.72);
+    if (clickActive && clickPTime < 1.5) l.material.opacity = Math.min(l.material.opacity + 0.4 * Math.exp(-clickPTime), 0.85);
+  });
+
+  // Particles
+  const pp = pGeo.attributes.position;
+  for (let i = 0; i < PCOUNT; i++) {
+    pAng[i] += pSpd[i];
+    pp.setX(i, Math.cos(pAng[i]) * pRad[i]);
+    pp.setZ(i, Math.sin(pAng[i]) * pRad[i]);
+    pp.setY(i, pY[i] + Math.sin(gTime * 0.4 + i * 0.3) * 0.08);
+  }
+  pp.needsUpdate = true;
+  pMat.opacity = isDark ? 0.72 : 0.38;
+
+  // Rings
+  ring1.rotation.z += 0.0022;
+  ring2.rotation.y += 0.0028; ring2.rotation.x += 0.001;
+  ring3.rotation.z -= 0.0018; ring3.rotation.y += 0.0035;
+  ring4.rotation.y += 0.002; ring4.rotation.z += 0.0015;
+
+  // Glow
+  brainPulse = brainHov ? Math.min(brainPulse + 0.045, 1) : Math.max(brainPulse - 0.035, 0);
+  pL1.intensity = 5.5 + brainPulse * 5.5;
+  pL2.intensity = 3.5 + brainPulse * 3;
+  pL3.intensity = 3 + brainPulse * 2.5;
+  pL4.intensity = 2 + brainPulse * 2;
+  bMat.emissiveIntensity = (isDark ? 0.45 : 0.22) + brainPulse * 0.35;
+  igMat.opacity = (isDark ? 0.14 : 0.08) + brainPulse * 0.2;
+
+  // Spike fade
+  if (spikeActive) {
+    const fade = Math.max(0, 1 - spikeAnim / 1.2);
+    spikeGrp.children.forEach(l => { l.material.opacity = fade * 0.9; });
+    if (spikeAnim > 1.2) { spikeActive = false; spikeGrp.children.forEach(l => l.material.opacity = 0); }
+  }
+
+  // Idle pulse rings (every 5s)
+  if (idleTimer > 5 && !idleActive) {
+    idleActive = true;
+    spawnIdleRings();
+    idleTimer = 0;
+  }
+  if (idleTimer < 5) idleActive = false;
+
+  if (clickPTime > 3.5) clickActive = false;
+  renderer.render(scene, camera);
+}
+animate();
+renderer.setSize(innerWidth, innerHeight);
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  positionOrbits();
+});
+
+/* ════════════════════════════════════════════════════
+   IDLE RINGS
+════════════════════════════════════════════════════ */
+function spawnIdleRings() {
+  for (let i = 0; i < 3; i++) {
+    const r = document.createElement('div');
+    r.className = 'idle-ring';
+    const size = 200 + i * 150;
+    r.style.cssText = `width:${size}px;height:${size}px;animation-duration:${2 + i * 0.7}s;animation-delay:${i * 0.4}s;border-color:rgba(167,139,250,${0.2 - i * 0.05})`;
+    document.body.appendChild(r);
+    setTimeout(() => r.remove(), 3500);
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   RIPPLES
+════════════════════════════════════════════════════ */
+function spawnRipples(x, y) {
+  const cols = ['#a78bfa', '#38bdf8', '#c4b5fd', '#e879f9'];
+  for (let i = 0; i < 4; i++) {
+    const r = document.createElement('div');
+    r.className = 'ripple';
+    r.style.cssText = `left:${x}px;top:${y}px;width:20px;height:20px;border-color:${cols[i]};animation-delay:${i * 0.12}s;animation-duration:${0.9 + i * 0.1}s`;
+    document.body.appendChild(r);
+    setTimeout(() => r.remove(), 1400);
+  }
+  // Energy burst
+  const eb = document.createElement('div');
+  eb.className = 'eburst';
+  eb.style.cssText = `left:${x}px;top:${y}px;width:20px;height:20px;border-color:rgba(167,139,250,0.4)`;
+  document.body.appendChild(eb);
+  setTimeout(() => eb.remove(), 900);
+}
+
+/* ════════════════════════════════════════════════════
+   ORBIT SYSTEM — DUAL RING
+════════════════════════════════════════════════════ */
+const orbitLayer = document.getElementById('orbit-layer');
+const innerNodes = [], outerNodes = [];
+let innerAngle = 0, outerAngle = Math.PI / 4;
+let orbitPaused = false, activeOrbitIdx = null, activeIsInner = true;
+
+// Build inner orbit
+INNER_TECHS.forEach((tech, i) => {
+  const wrap = document.createElement('div');
+  wrap.className = 'orb-node';
+  wrap.innerHTML = `<div class="orb-pill" data-idx="${i}" data-layer="inner">
+    <i class="${tech.icon} oi" style="color:${tech.col}"></i>
+    <span>${tech.label}</span>
+  </div>`;
+  orbitLayer.appendChild(wrap);
+  const pill = wrap.querySelector('.orb-pill');
+  pill.addEventListener('mouseenter', () => { showTT(tech.desc); setCursorBig(true); playHoverSound(); });
+  pill.addEventListener('mouseleave', () => { hideTT(); setCursorBig(false); });
+  pill.addEventListener('click', () => { handleOrbitClick(i, true, tech); initAudio(); playClickSound(); });
+  innerNodes.push(wrap);
+});
+
+// Build outer orbit
+OUTER_TECHS.forEach((tech, i) => {
+  const wrap = document.createElement('div');
+  wrap.className = 'orb-node orb-outer';
+  wrap.innerHTML = `<div class="orb-pill" data-idx="${i}" data-layer="outer">
+    <i class="${tech.icon} oi" style="color:${tech.col}"></i>
+    <span>${tech.label}</span>
+  </div>`;
+  orbitLayer.appendChild(wrap);
+  const pill = wrap.querySelector('.orb-pill');
+  pill.addEventListener('mouseenter', () => { showTT(tech.desc); setCursorBig(true); playHoverSound(); });
+  pill.addEventListener('mouseleave', () => { hideTT(); setCursorBig(false); });
+  pill.addEventListener('click', () => { handleOrbitClick(i, false, tech); initAudio(); playClickSound(); });
+  outerNodes.push(wrap);
+});
+
+function handleOrbitClick(idx, isInner, tech) {
+  const nodes = isInner ? innerNodes : outerNodes;
+  if (activeOrbitIdx === idx && activeIsInner === isInner) {
+    // Deselect
+    orbitPaused = false; activeOrbitIdx = null;
+    nodes[idx].querySelector('.orb-pill').classList.remove('sel');
+    closePanel('skill');
+  } else {
+    orbitPaused = true; activeOrbitIdx = idx; activeIsInner = isInner;
+    document.querySelectorAll('.orb-pill').forEach(p => p.classList.remove('sel'));
+    nodes[idx].querySelector('.orb-pill').classList.add('sel');
+    spawnRipples(mx, my);
+    openSkillPanel(tech);
+  }
+}
+
+function getOrbitR(inner) {
+  const base = Math.min(innerWidth, innerHeight);
+  return inner ? base * 0.3 : base * 0.42;
+}
+
+function positionOrbits() {
+  const cx = innerWidth / 2, cy = innerHeight / 2;
+  const n1 = INNER_TECHS.length, n2 = OUTER_TECHS.length;
+  const r1 = getOrbitR(true), r2 = getOrbitR(false);
+  innerNodes.forEach((el, i) => {
+    const a = innerAngle + (i / n1) * Math.PI * 2;
+    el.style.left = (cx + Math.cos(a) * r1) + 'px';
+    el.style.top = (cy + Math.sin(a) * r1 * 0.55) + 'px';
+  });
+  outerNodes.forEach((el, i) => {
+    const a = outerAngle + (i / n2) * Math.PI * 2;
+    el.style.left = (cx + Math.cos(a) * r2) + 'px';
+    el.style.top = (cy + Math.sin(a) * r2 * 0.52) + 'px';
+  });
+  // Position orbit ring visuals
+  document.querySelectorAll('.orb-ring').forEach(r => r.remove());
+  const r1v = r1 * 1.05, r2v = r2 * 1.05;
+  [{ r: r1v, op: 0.08 }, { r: r2v, op: 0.05 }].forEach(({ r, op }) => {
+    const d = document.createElement('div');
+    d.className = 'orb-ring';
+    d.style.cssText = `left:${cx}px;top:${cy}px;width:${r*2}px;height:${r}px;border-color:rgba(139,92,246,${op})`;
+    orbitLayer.insertBefore(d, orbitLayer.firstChild);
+  });
+}
+
+let lastOrbitFrame = performance.now();
+(function animOrbits(ts) {
+  const dt = (ts - lastOrbitFrame) / 1000; lastOrbitFrame = ts;
+  if (!orbitPaused) {
+    innerAngle += 0.004 + Math.sin(gTime * 0.2) * 0.001;
+    outerAngle -= 0.0028 + Math.cos(gTime * 0.15) * 0.001;
+  }
+  positionOrbits();
+  requestAnimationFrame(animOrbits);
+})(performance.now());
+
+/* ════════════════════════════════════════════════════
+   TOOLTIP
+════════════════════════════════════════════════════ */
+const tt = document.getElementById('tt');
+document.addEventListener('mousemove', e => {
+  tt.style.left = (e.clientX + 16) + 'px';
+  tt.style.top = (e.clientY - 36) + 'px';
+});
+function showTT(text) { tt.textContent = text; tt.classList.add('on'); }
+function hideTT() { tt.classList.remove('on'); }
+
+/* ════════════════════════════════════════════════════
+   TYPING ANIMATION
+════════════════════════════════════════════════════ */
+const ROLES = ['IT Student','Future Developer','Problem Solver','Network Architect','BSIT 4th Year','Systems Builder'];
+let rIdx = 0, cIdx = 0, del = false;
+const tEl = document.getElementById('type-out');
+function typeLoop() {
+  const cur2 = ROLES[rIdx];
+  if (!del) {
+    if (cIdx < cur2.length) { tEl.textContent = cur2.slice(0, ++cIdx); setTimeout(typeLoop, 78); }
+    else setTimeout(() => { del = true; typeLoop(); }, 2600);
+  } else {
+    if (cIdx > 0) { tEl.textContent = cur2.slice(0, --cIdx); setTimeout(typeLoop, 42); }
+    else { del = false; rIdx = (rIdx + 1) % ROLES.length; typeLoop(); }
+  }
+}
+typeLoop();
+
+/* ════════════════════════════════════════════════════
+   PANEL SYSTEM
+════════════════════════════════════════════════════ */
+const panelWrap = document.getElementById('panel-wrap');
+const panels = {}; // id → element
+
+function createPanel(id, opts) {
+  // Remove existing
+  if (panels[id]) { panels[id].remove(); delete panels[id]; }
+
+  const p = document.createElement('div');
+  p.className = 'panel';
+  p.id = 'panel-' + id;
+
+  // Default position — offset from center
+  const px = opts.x || (innerWidth * 0.5 + 80);
+  const py = opts.y || (innerHeight * 0.5 - 220);
+  p.style.cssText = `left:${px}px;top:${py}px;opacity:0;transform:scale(0.86) translateY(16px);transition:opacity 0.42s cubic-bezier(0.34,1.56,0.64,1),transform 0.42s cubic-bezier(0.34,1.56,0.64,1)`;
+
+  p.innerHTML = `
+    <div class="p-head panel-drag">
+      <div class="p-title-wrap">
+        <div class="p-icon"><i class="${opts.icon || 'fas fa-brain'}"></i></div>
+        <div class="p-title">${opts.title}</div>
+      </div>
+      <div class="p-ctrl">
+        <button class="p-close" data-pid="${id}"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+    <div class="p-tabs" id="tabs-${id}"></div>
+    <div class="p-body" id="body-${id}"></div>
+  `;
+  panelWrap.appendChild(p);
+  panels[id] = p;
+
+  // Animate in
+  requestAnimationFrame(() => {
+    p.style.opacity = '1';
+    p.style.transform = 'scale(1) translateY(0)';
+  });
+
+  // Close button
+  p.querySelector('.p-close').addEventListener('click', () => closePanel(id));
+
+  // Drag
+  makeDraggable(p, p.querySelector('.panel-drag'));
+
+  // Build tabs
+  if (opts.tabs) buildTabs(id, opts.tabs, opts.defaultTab || 0);
+
+  return p;
+}
+
+function closePanel(id) {
+  const p = panels[id];
+  if (!p) return;
+  p.style.opacity = '0'; p.style.transform = 'scale(0.88) translateY(12px)';
+  setTimeout(() => { p.remove(); delete panels[id]; }, 420);
+  if (id === 'skill') { orbitPaused = false; activeOrbitIdx = null; document.querySelectorAll('.orb-pill').forEach(p2 => p2.classList.remove('sel')); }
+}
+
+function closeAllPanels() {
+  Object.keys(panels).forEach(id => closePanel(id));
+}
+
+function buildTabs(pid, tabs, defaultIdx) {
+  const tabEl = document.getElementById('tabs-' + pid);
+  const bodyEl = document.getElementById('body-' + pid);
+  tabEl.innerHTML = '';
+  tabs.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'ptab' + (i === defaultIdx ? ' on' : '');
+    btn.textContent = t.label;
+    btn.addEventListener('click', () => {
+      tabEl.querySelectorAll('.ptab').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      bodyEl.innerHTML = '';
+      bodyEl.appendChild(t.render());
+    });
+    tabEl.appendChild(btn);
+    if (i === defaultIdx) { bodyEl.innerHTML = ''; bodyEl.appendChild(t.render()); }
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   DRAG
+════════════════════════════════════════════════════ */
+function makeDraggable(panel, handle) {
+  let startX, startY, origX, origY, dragging = false;
+  handle.addEventListener('mousedown', e => {
+    if (e.target.closest('.p-close,.p-min')) return;
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    origX = parseInt(panel.style.left) || 0;
+    origY = parseInt(panel.style.top) || 0;
+    panel.style.transition = 'none';
+    panel.style.zIndex = 250;
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    panel.style.left = (origX + e.clientX - startX) + 'px';
+    panel.style.top = (origY + e.clientY - startY) + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (dragging) { dragging = false; panel.style.transition = ''; }
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   OPEN PANELS
+════════════════════════════════════════════════════ */
+let islandPanelOpen = false;
+
+function openBrainPanel() {
+  const tabs = [
+    { label: 'About', render: renderAbout },
+    { label: 'Skills', render: renderSkills },
+    { label: 'Projects', render: renderProjects },
+    { label: 'Education', render: renderEducation },
+    { label: 'Contact', render: renderContact },
+  ];
+  createPanel('brain', {
+    title: 'John Allen Guerra', icon: 'fas fa-brain',
+    tabs, defaultTab: 0,
+    x: Math.max(40, innerWidth * 0.5 + 60),
+    y: Math.max(80, innerHeight * 0.5 - 240),
+  });
+  openMottoFn();
+}
+
+function openSkillPanel(tech) {
+  const skill = DATA.skills.find(s => s.n === tech.skill || s.n.startsWith(tech.skill.split('/')[0].trim())) || { n: tech.label, lv: 70, d: tech.desc, i: tech.icon, c: tech.col };
+  const tabs = [
+    { label: skill.n.split('/')[0].trim(), render: () => renderSkillDetail(skill) },
+    { label: 'All Skills', render: renderSkills },
+    { label: 'Projects', render: renderProjects },
+  ];
+  createPanel('skill', {
+    title: tech.label, icon: tech.icon,
+    tabs, defaultTab: 0,
+    x: Math.max(40, innerWidth * 0.5 + 60),
+    y: Math.max(80, innerHeight * 0.5 - 200),
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER FUNCTIONS
+════════════════════════════════════════════════════ */
+function renderAbout() {
+  const d = document.createElement('div');
+  const rows = [
+    { i: 'fas fa-user', l: 'Full Name', v: DATA.about.name },
+    { i: 'fas fa-graduation-cap', l: 'School', v: DATA.about.school },
+    { i: 'fas fa-layer-group', l: 'Course & Year', v: DATA.about.year },
+    { i: 'fas fa-map-marker-alt', l: 'Location', v: DATA.about.location },
+    { i: 'fas fa-briefcase', l: 'Status', v: DATA.about.status },
+  ];
+  d.innerHTML = `
+    <div style="padding:0 0 0.9rem;border-bottom:1px solid rgba(139,92,246,0.1);margin-bottom:0.75rem">
+      <p style="font-size:0.75rem;color:var(--text-sec);line-height:1.65;margin-bottom:0.75rem">${DATA.about.bio}</p>
+      <div style="padding:0.6rem 0.9rem;border-radius:9px;background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.15)">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--ac3);font-style:italic">${MOTTO}</span>
+      </div>
+    </div>
+    ${rows.map(r => `<div class="info-row"><div class="iico"><i class="${r.i}"></i></div><div><div class="ilabel">${r.l}</div><div class="ival">${r.v}</div></div></div>`).join('')}
+  `;
+  return d;
+}
+
+function renderSkills() {
+  const d = document.createElement('div');
+  d.innerHTML = DATA.skills.map(s => `
+    <div class="sk-item">
+      <div class="sk-top">
+        <div class="sk-name"><i class="${s.i}" style="color:${s.c};font-size:0.88rem;width:15px"></i>${s.n}</div>
+        <span class="sk-pct">${s.lv}%</span>
+      </div>
+      <div class="sk-track"><div class="sk-fill" style="width:0%" data-w="${s.lv}%"></div></div>
+    </div>`).join('');
+  setTimeout(() => d.querySelectorAll('.sk-fill').forEach(el => el.style.width = el.dataset.w), 80);
+  return d;
+}
+
+function renderSkillDetail(s) {
+  const d = document.createElement('div');
+  d.innerHTML = `
+    <div class="sk-detail-hero">
+      <i class="${s.i}" style="color:${s.c || 'var(--ac3)'};font-size:2rem"></i>
+      <div class="sk-detail-title">${s.n}</div>
+    </div>
+    <div class="sk-detail-desc">${s.d || 'Core skill in the stack.'}</div>
+    <div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:0.62rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim);margin-bottom:5px"><span>Proficiency</span><span>${s.lv || 70}%</span></div><div class="sk-track"><div class="sk-fill" style="width:0%" data-w="${s.lv || 70}%"></div></div></div>
+    <div style="font-size:0.62rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:10px;margin-bottom:5px">USED IN:</div>
+    ${DATA.projects.filter(p => p.tags.some(t => t.toLowerCase().includes(s.n.split('/')[0].trim().toLowerCase().slice(0, 4)))).slice(0, 3).map(p => `<div style="font-size:0.7rem;color:var(--text-sec);padding:4px 0;border-bottom:1px solid rgba(139,92,246,0.07);display:flex;align-items:center;gap:6px"><span style="color:var(--ac3)">→</span>${p.t}</div>`).join('') || `<div style="font-size:0.7rem;color:var(--text-dim)">→ Applied across multiple projects</div>`}
+  `;
+  setTimeout(() => d.querySelectorAll('.sk-fill').forEach(el => el.style.width = el.dataset.w), 80);
+  return d;
+}
+
+function renderProjects() {
+  const d = document.createElement('div');
+  d.innerHTML = DATA.projects.map(p => `
+    <div class="pc">
+      <div class="pc-row"><div class="pc-title">${p.t}</div><span class="pc-badge">${p.s}</span></div>
+      <div class="pc-desc">${p.d}</div>
+      <div class="pc-tags">${p.tags.map(t => `<span class="ptag">${t}</span>`).join('')}</div>
+    </div>`).join('');
+  return d;
+}
+
+function renderEducation() {
+  const d = document.createElement('div');
+  d.innerHTML = `
+    ${DATA.education.map(e => `<div class="edu-c"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><i class="${e.i}" style="color:var(--ac3);font-size:0.8rem"></i><div class="edu-school">${e.s}</div></div><div class="edu-deg">${e.d}</div><div class="edu-yr">${e.y}</div></div>`).join('')}
+    <div style="margin-top:10px;font-size:0.58rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Certifications</div>
+    ${DATA.certs.map(c => `<div class="cert"><i class="fas fa-certificate"></i>${c}</div>`).join('')}
+  `;
+  return d;
+}
+
+function renderContact() {
+  const d = document.createElement('div');
+  d.innerHTML = `
+    <div style="font-size:0.62rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-bottom:10px;letter-spacing:0.1em">GET IN TOUCH:</div>
+    ${DATA.contact.map(c => `
+      <${c.h ? `a href="${c.h}" target="_blank" rel="noopener"` : 'div'} class="ct-link" style="text-decoration:none">
+        <i class="${c.i}"></i><span>${c.l}</span>
+        ${c.h ? '<i class="fas fa-up-right-from-square" style="margin-left:auto;font-size:0.58rem;color:var(--text-dim)"></i>' : ''}
+      </${c.h ? 'a' : 'div'}>
+    `).join('')}
+    <div style="margin-top:12px;padding:0.7rem;border-radius:9px;background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.15);text-align:center">
+      <div style="font-size:0.6rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-bottom:3px">OPEN TO</div>
+      <div style="font-size:0.8rem;color:var(--ac3);font-weight:700">OJT 2025 · Internship · Entry-Level</div>
+    </div>
+  `;
+  return d;
+}
+
+/* ════════════════════════════════════════════════════
+   MOTTO & SECRET
+════════════════════════════════════════════════════ */
+const mottoEl = document.getElementById('motto');
+const secretEl = document.getElementById('secret');
+
+function openMottoFn() {
+  mottoEl.classList.add('on');
+  // Neural burst
+  const inner = document.getElementById('motto-inner');
+  inner.querySelectorAll('.nb').forEach(e => e.remove());
+  for (let i = 0; i < 16; i++) {
+    const nb = document.createElement('div');
+    nb.className = 'nb';
+    nb.style.cssText = `transform:rotate(${i * 22.5}deg);animation-delay:${i * 0.04}s;animation-duration:${0.9 + Math.random() * 0.4}s;background:linear-gradient(to bottom,${['#a78bfa','#38bdf8','#e879f9','#c4b5fd'][i % 4]},transparent)`;
+    inner.appendChild(nb);
+  }
+  playMottoSound();
+}
+function closeMottoFn() { mottoEl.classList.remove('on'); }
+function openSecret() {
+  closeMottoFn();
+  secretEl.classList.add('on');
+}
+function closeSecretFn() { secretEl.classList.remove('on'); }
+
+// Logo click → open brain panel
+document.getElementById('logo-btn').addEventListener('click', () => {
+  openBrainPanel(); initAudio(); playClickSound();
+  spawnRipples(innerWidth / 2, innerHeight / 2);
+});
+
+// Cursor hover events for interactive elements
+document.addEventListener('DOMContentLoaded', () => {});
+document.querySelectorAll('button,.orb-node,.hdr-logo').forEach(el => {
+  el.addEventListener('mouseenter', () => setCursorBig(true));
+  el.addEventListener('mouseleave', () => setCursorBig(false));
+});
+</script>
+</body>
+</html>
